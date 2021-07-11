@@ -3,7 +3,9 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
+using System.Net;
 using System.Web;
 using System.Web.Mvc;
 
@@ -11,10 +13,10 @@ namespace Lab4.Controllers
 {
     public class CoursesController : Controller
     {
+        BigSchoolContext context = new BigSchoolContext();
         // GET: Courses
         public ActionResult Create()
         {
-            BigSchoolContext context = new BigSchoolContext();
             Course objCourse = new Course();
             objCourse.ListCategory = context.Categories.ToList();
             return View(objCourse);
@@ -75,5 +77,64 @@ namespace Lab4.Controllers
             }
             return View(courses);
         }
-    }
+
+        [Authorize]
+        public ActionResult Edit(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            Course course = context.Courses.Find(id);
+            if (course == null)
+            {
+                return HttpNotFound();
+            }
+            course.ListCategory = context.Categories.ToList();
+            return View(course);
+        }
+
+        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Edit(Course course)
+        {
+            ModelState.Remove("LectureId");
+            if (ModelState.IsValid)
+            {
+                ApplicationUser user = System.Web.HttpContext.Current.GetOwinContext().GetUserManager<ApplicationUserManager>().FindById(System.Web.HttpContext.Current.User.Identity.GetUserId());
+                course.LecturerId = user.Id;
+                context.Entry(course).State = EntityState.Modified;
+                context.SaveChanges();
+                return RedirectToAction("Mine");
+            }
+            return View(course);
+        }
+
+        [Authorize]
+        public ActionResult Delete(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            Course course = context.Courses.Find(id);
+            if (course == null)
+            {
+                return HttpNotFound();
+            }
+            return View(course);
+        }
+
+        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DeleteConfirmed(int id)
+        {
+            Course course = context.Courses.Find(id);
+            context.Courses.Remove(course);
+            context.SaveChanges();
+            return RedirectToAction("Index", "Home");
+        }
+}
 }
